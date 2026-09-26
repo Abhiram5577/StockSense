@@ -8,17 +8,35 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+**/node_modules
 dist
 dist-ssr
+**/dist
 .output
+**/.output
 .vinxi
 .tanstack/**
 .nitro
+**/.nitro
 *.local
 
 # Wrangler / Cloudflare
 .wrangler/
+**/.wrangler/
 .dev.vars
+
+# Environment files (root, backend, frontend, and all subdirectories)
+.env
+.env.local
+.env.*.local
+*.env
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Whitelist .env.example templates
+!.env.example
+!**/.env.example
 
 # Editor directories and files
 .vscode/*

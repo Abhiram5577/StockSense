@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDownLeft,
   ArrowRightLeft,
@@ -18,7 +18,8 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useAuth } from "../lib/auth-context";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -72,6 +73,9 @@ const navItems = [
 const bars = ["h-[38%]", "h-[52%]", "h-[44%]", "h-[66%]", "h-[58%]", "h-[72%]", "h-[88%]", "h-[60%]", "h-[70%]", "h-[50%]", "h-[64%]", "h-[78%]", "h-[56%]", "h-[82%]"];
 
 function StockSenseDashboard() {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
+
   const [mobileNav, setMobileNav] = useState(false);
   const [activeNav, setActiveNav] = useState("Dashboard");
   const [search, setSearch] = useState("");
@@ -79,6 +83,12 @@ function StockSenseDashboard() {
   const [warehouseFilter, setWarehouseFilter] = useState("All warehouses");
   const [action, setAction] = useState<MovementType | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate({ to: "/login" });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 
   const filteredMovements = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -95,6 +105,23 @@ function StockSenseDashboard() {
     setMobileNav(false);
     if (label !== "Dashboard") setNotice(`${label} workspace selected`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-lg bg-primary font-display text-lg font-bold text-primary-foreground animate-pulse shadow-panel">
+            S
+          </span>
+          <p className="font-mono text-xs text-muted-foreground">Checking authentication session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground antialiased lg:flex">
@@ -125,10 +152,33 @@ function StockSenseDashboard() {
         </div>
         <div className="mt-auto space-y-1 border-t border-border/60 pt-3">
           <button onClick={() => chooseNav("Settings")} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"><Settings className="size-4" />Settings</button>
-          <button onClick={() => setNotice("Demo session remains active")} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"><LogOut className="size-4" />Log out</button>
+          <button
+            onClick={async () => {
+              await logout();
+              navigate({ to: "/login" });
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+          >
+            <LogOut className="size-4" />
+            Log out
+          </button>
           <div className="flex items-center gap-2 px-2 pt-2">
-            <span className="grid size-8 place-items-center rounded-full bg-panel-strong font-mono text-[11px] text-primary">HP</span>
-            <div className="leading-tight"><p className="text-[13px]">Haneesh P.</p><p className="font-mono text-[10px] text-muted-foreground">Inventory manager</p></div>
+            <span className="grid size-8 place-items-center rounded-full bg-panel-strong font-mono text-[11px] text-primary">
+              {user?.name
+                ? user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                : "OP"}
+            </span>
+            <div className="leading-tight">
+              <p className="text-[13px] font-medium">{user?.name || "Inventory User"}</p>
+              <p className="font-mono text-[10px] text-muted-foreground capitalize">
+                {user?.role || "Staff"}
+              </p>
+            </div>
           </div>
         </div>
       </aside>
