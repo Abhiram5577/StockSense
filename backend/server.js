@@ -4,6 +4,11 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
+import warehouseRoutes from './routes/warehouseRoutes.js';
+import locationRoutes from './routes/locationRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import stockRoutes from './routes/stockRoutes.js';
 import { testDbConnection } from './config/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +69,11 @@ app.get('/api/health', (req, res) => {
 
 // Authentication routes
 app.use('/api/auth', authRoutes);
+app.use('/api/warehouses', warehouseRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/stock', stockRoutes);
 
 // 404 Not Found Handler for unknown API endpoints
 app.use('/api/*', (req, res) => {

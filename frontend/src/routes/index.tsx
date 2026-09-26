@@ -20,7 +20,12 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "../lib/auth-context";
-
+import { WarehousesView } from "../components/WarehousesView";
+import { ProductsView } from "../components/ProductsView";
+import { OperationsView } from "../components/OperationsView";
+import { LedgerView } from "../components/LedgerView";
+import { DashboardView } from "../components/DashboardView";
+import { warehouseApi } from "../lib/api";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -62,6 +67,7 @@ const movements: Array<{
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard },
+  { label: "Warehouses", icon: Warehouse },
   { label: "Products", icon: Boxes },
   { label: "Receipts", icon: ArrowDownLeft },
   { label: "Deliveries", icon: ArrowUpRight },
@@ -74,7 +80,7 @@ const bars = ["h-[38%]", "h-[52%]", "h-[44%]", "h-[66%]", "h-[58%]", "h-[72%]", 
 
 function StockSenseDashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, token } = useAuth();
 
   const [mobileNav, setMobileNav] = useState(false);
   const [activeNav, setActiveNav] = useState("Dashboard");
@@ -83,12 +89,17 @@ function StockSenseDashboard() {
   const [warehouseFilter, setWarehouseFilter] = useState("All warehouses");
   const [action, setAction] = useState<MovementType | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       navigate({ to: "/login" });
+    } else if (isAuthenticated && token) {
+      warehouseApi.getAll(token).then(res => {
+        if (res.success) setWarehouses(res.data?.warehouses || res.warehouses || []);
+      });
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [isLoading, isAuthenticated, token, navigate]);
 
   const filteredMovements = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -146,9 +157,18 @@ function StockSenseDashboard() {
         </nav>
         <p className="mb-2 mt-5 px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Warehouses</p>
         <div className="space-y-1 text-sm">
-          <WarehouseRow color="bg-primary" name="Central · Main" count="4" active />
-          <WarehouseRow color="bg-warning" name="East · Production" count="1" />
-          <WarehouseRow color="bg-muted-foreground" name="South · Dispatch" />
+          {warehouses.length > 0 ? warehouses.map((wh, idx) => {
+            const colors = ["bg-primary", "bg-warning", "bg-success", "bg-info"];
+            return (
+              <WarehouseRow 
+                key={wh.id} 
+                color={colors[idx % colors.length]} 
+                name={wh.name} 
+              />
+            );
+          }) : (
+            <p className="px-2 text-xs text-muted-foreground">No warehouses yet</p>
+          )}
         </div>
         <div className="mt-auto space-y-1 border-t border-border/60 pt-3">
           <button onClick={() => chooseNav("Settings")} className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"><Settings className="size-4" />Settings</button>
@@ -200,59 +220,17 @@ function StockSenseDashboard() {
           </div>
         </header>
 
-        <main className="space-y-5 p-4 sm:p-5">
-          <div className="rise flex flex-wrap items-end justify-between gap-4">
-            <div><p className="mb-1 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">Live operations</p><h1 className="font-display text-2xl font-semibold">Control desk</h1><p className="mt-1 text-sm text-muted-foreground">Saturday · 10:22 · Central Main · 9 open tickets</p></div>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 rounded-md bg-panel-strong/70 px-2.5 py-2 font-mono text-[11px] text-muted-foreground ring-1 ring-border/50"><Warehouse className="size-3.5" /><select value={warehouseFilter} onChange={(event) => setWarehouseFilter(event.target.value)} className="appearance-none bg-transparent outline-none"><option>All warehouses</option><option>Central Main</option><option>East Production</option><option>South Dispatch</option></select><ChevronDown className="size-3" /></label>
-              <span className="hidden rounded-md bg-panel-strong/70 px-2.5 py-2 font-mono text-[11px] text-muted-foreground ring-1 ring-border/50 sm:inline">Last 24h</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-            <Metric label="Products in stock" value="1,284" detail="+36 this week" tone="primary" />
-            <Metric label="Low / out of stock" value="17" detail="5 critical" tone="warning" />
-            <Metric label="Pending receipts" value="12" detail="3 due today" />
-            <Metric label="Pending deliveries" value="08" detail="2 ready to ship" />
-            <Metric label="Transfers scheduled" value="06" detail="across 3 sites" className="col-span-2 xl:col-span-1" />
-          </div>
-
-          <div className="grid gap-3 xl:grid-cols-3">
-            <Panel className="xl:col-span-1" title="Inventory movement" aside="units · 14d">
-              <div className="flex h-28 items-end gap-1.5 border-b border-border/50 pt-5">
-                {bars.map((height, index) => <div key={index} className={`bar flex-1 rounded-t-[3px] ${height} ${index === 6 || index === 13 ? "bg-primary" : "bg-primary/25"}`} />)}
-              </div>
-              <div className="mt-2 flex justify-between font-mono text-[9px] text-muted-foreground"><span>13 Sep</span><span>20 Sep</span><span>Today</span></div>
-            </Panel>
-            <Panel title="Warehouse stock" aside="48,910 units">
-              <div className="space-y-4 pt-1"><StockBar name="Central Main" value="31,204" width="w-[74%]" /><StockBar name="East Production" value="12,440" width="w-[41%]" /><StockBar name="South Dispatch" value="5,266" width="w-[18%]" /></div>
-            </Panel>
-            <Panel title="Low-stock attention" aside="17 items" alert>
-              <div className="space-y-1">
-                <LowStock name="Neoprene Gasket" meta="NGT-012 · A7" count="0 left" critical />
-                <LowStock name="Alloy Bracket 40" meta="ALB-040 · D2" count="3 left" critical />
-                <LowStock name="Coil Spring M6" meta="CSM-006 · F1" count="8 left" />
-              </div>
-            </Panel>
-          </div>
-
-          <section className="rise overflow-hidden rounded-xl bg-panel/50 ring-1 ring-border/60 backdrop-blur-xl">
-            <div className="flex flex-wrap items-center gap-3 border-b border-border/60 px-4 py-3">
-              <div><h2 className="font-display text-sm font-semibold">Recent movements</h2><p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{warehouseFilter} · live ledger</p></div>
-              <SlidersHorizontal className="ml-auto size-3.5 text-muted-foreground" />
-              <div className="flex flex-wrap gap-1">
-                {(["All", "Receipt", "Delivery", "Transfer", "Adjustment"] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={`rounded-md px-2 py-1 font-mono text-[10px] transition-colors ${filter === item ? "bg-panel-strong text-foreground ring-1 ring-border" : "text-muted-foreground hover:text-foreground"}`}>{item}</button>)}
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-[13px]">
-                <thead><tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground"><th className="px-4 py-2 text-left font-medium">Ticket</th><th className="py-2 text-left font-medium">Type</th><th className="py-2 text-left font-medium">Product / SKU</th><th className="py-2 text-right font-medium">Qty</th><th className="px-4 py-2 text-left font-medium">Location</th><th className="px-4 py-2 text-left font-medium">Status</th><th className="px-4 py-2 text-right font-medium">When</th></tr></thead>
-                <tbody>{filteredMovements.map((movement) => <MovementRow key={movement.ticket} {...movement} />)}</tbody>
-              </table>
-              {filteredMovements.length === 0 && <div className="px-4 py-10 text-center text-sm text-muted-foreground">No movements match your search.</div>}
-            </div>
-          </section>
-        </main>
+        {activeNav === "Warehouses" ? (
+          <WarehousesView />
+        ) : activeNav === "Products" ? (
+          <ProductsView />
+        ) : activeNav === "Move history" ? (
+          <LedgerView />
+        ) : ["Receipts", "Deliveries", "Transfers", "Adjustments"].includes(activeNav) ? (
+          <OperationsView key={activeNav} defaultType={activeNav === "Deliveries" ? "Delivery" : activeNav.replace('s', '') as any} />
+        ) : (
+          <DashboardView setAction={(a) => setActiveNav(a + "s")} />
+        )}
       </div>
 
       <div className="fixed inset-x-4 bottom-4 z-30 flex gap-2 md:hidden">
